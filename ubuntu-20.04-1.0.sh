@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ###############################################################################################################################
-# Intall server - Ubuntu 20.04                                                                                                #
+# Intall server - Ubuntu 22.04                                                                                                #
 # Version - 0.1                                                                                                               #
 ###############################################################################################################################
 
@@ -26,11 +26,12 @@ read -p "Are you actually installing the server? (y|n)" CHOICE
 if [ "$CHOICE" = "y" ]; then
 
 
+
 # UBUNT #######################################################################################################################
 ###############################################################################################################################
 
 # Install Ubuntu
-echo -e "${B}Update and Upgrade Ubuntu 20.04 ${N}"
+echo -e "${B}Update and Upgrade Ubuntu 22.04 ${N}"
 sudo apt-get update -y -q && sudo apt-get upgrade -y -q
 
 # Ubuntu Commons
@@ -57,9 +58,15 @@ sudo add-apt-repository ppa:ondrej/php -y
 echo -e "${B}Add repository PPA:NGINX ${N}"
 sudo add-apt-repository ppa:ondrej/nginx -y
 
+# Add PHPMYADMIN repository
+echo -e "${B}Add repository PPA:PHPMYADMIN ${N}"
+sudo add-apt-repository ppa:phpmyadmin/ppa -y
+
 # Update Ubuntu
 echo -e "${B}Update Ubuntu ${N}"
 sudo apt update -y
+
+
 
 # MARIADB #####################################################################################################################
 ###############################################################################################################################
@@ -78,6 +85,14 @@ n
 n
 n
 EOF
+
+sudo systemctl stop mariadb
+sudo mysqld_safe --skip-grant-tables --skip-networking &
+mysql -u root -e "FLUSH PRIVILEGES; ALTER USER 'root'@'localhost' IDENTIFIED BY 'password';"
+sudo kill `cat /var/run/mysqld/mysqld.pid`
+# sudo kill `/var/run/mariadb/mariadb.pid` // Deveria ser esse?
+sudo systemctl start mariadb
+
 
 # NGINX #######################################################################################################################
 ###############################################################################################################################
@@ -114,6 +129,8 @@ sudo chmod 755 -R $NGINX_DEF
 echo -e "${B}Restart NGINX ${N}"
 sudo systemctl reload nginx
 
+
+
 # PHP #########################################################################################################################
 ###############################################################################################################################
 
@@ -128,7 +145,10 @@ sudo apt install php-common \
                  php-cgi \
                  php-mbstring \
                  php-curl \
+                 php-mbstring \
+                 php-gettext \
                  php-gd \
+                 php-json \
                  php-xml \
                  php-xmlrpc \
                  php-zip -y -q
@@ -144,6 +164,8 @@ echo -e "${B}Configure PHP ${PHP_VERSION} Extensions ${N}"
 # https://serverfault.com/questions/627903/is-the-php-option-cgi-fix-pathinfo-really-dangerous-with-nginx-php-fpm
 sudo sed -i "s/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/" "/etc/php/${PHP_VERSION}/fpm/php.ini"
 sudo sed -i "s/display_errors = Off/display_errors = On/" "/etc/php/${PHP_VERSION}/fpm/php.ini"
+
+
 
 # MONIT #######################################################################################################################
 ###############################################################################################################################
@@ -205,7 +227,32 @@ sudo chmod 700 -R $MONIT_CONF
 # Restart Monit
 echo -e "${B}Restart Monit ${N}"
 sudo monit reload
-  
+
+
+
+# PHPMYADMIN ##################################################################################################################
+###############################################################################################################################
+
+# Set non-interactive mode
+sudo debconf-set-selections <<< 'phpmyadmin phpmyadmin/dbconfig-install boolean true'
+sudo debconf-set-selections <<< 'phpmyadmin phpmyadmin/app-password-confirm password root'
+sudo debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/admin-pass password root'
+sudo debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/app-pass password root'
+sudo debconf-set-selections <<< 'phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2'
+
+# PhpMyAdmin
+echo -e "${B}\n# Install PhpMyAdmin ${N}"
+sudo apt-get -y install phpmyadmin
+
+# Create symbolic link
+sudo ln -s /usr/share/phpmyadmin /var/www/html/phpmyadmin
+
+#sudo apt -y install adminer
+#sudo a2enconf adminer.conf
+#sudo ln -s /usr/share/adminer /var/www/html/adminer
+
+
+
 # CONFIGURATIONS  #############################################################################################################
 ###############################################################################################################################
 
@@ -225,6 +272,9 @@ echo -e "<?php die('Tanks for using Hash!'); ?>" > /var/www/html/index.php
 echo -e "Create Mysql..."
 echo -e "<?php \$conn = new mysqli('localhost', 'root', ''); if (\$conn->connect_error) { die('Connection failed: ' . \$conn->connect_error); } echo 'Connected successfully'; ?>" > /var/www/html/mysql.php
 
+
+
+
 # RESTART #####################################################################################################################
 ###############################################################################################################################
 
@@ -240,4 +290,3 @@ sudo systemctl reload "php${PHP_VERSION}-fpm"
 echo -e "\n${GREEN}Thank for using! ${N}\n"
 
 fi
-
