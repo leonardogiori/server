@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ###############################################################################################################################
-# Intall server - Ubuntu 22.04                                                                                                #
+# Intall server - Ubuntu 20.04                                                                                                #
 # Version - 0.1                                                                                                               #
 ###############################################################################################################################
 
@@ -15,8 +15,12 @@ N=$'\e[0m'
 
 # Vars
 PHP_VERSION='8.1'
-NGINX_DEF='/etc/nginx/sites-enabled/default'
+NGINX_DEF='/etc/nginx/nginx.conf'
+LOG_FORMAT='$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" "$http_x_forwarded_for"'
 MONIT_CONF='/etc/monit/monitrc'
+
+
+
 
 # Clear Terminal
 sudo clear
@@ -27,11 +31,12 @@ if [ "$CHOICE" = "y" ]; then
 
 
 
+
 # UBUNT #######################################################################################################################
 ###############################################################################################################################
 
 # Install Ubuntu
-echo -e "${B}Update and Upgrade Ubuntu 22.04 ${N}"
+echo -e "${B}Update and Upgrade Ubuntu 20.04 ${N}"
 sudo apt-get update -y -q && sudo apt-get upgrade -y -q
 
 # Ubuntu Commons
@@ -68,6 +73,7 @@ sudo apt update -y
 
 
 
+
 # MARIADB #####################################################################################################################
 ###############################################################################################################################
 
@@ -88,10 +94,13 @@ EOF
 
 sudo systemctl stop mariadb
 sudo mysqld_safe --skip-grant-tables --skip-networking &
-mysql -u root -e "FLUSH PRIVILEGES; ALTER USER 'root'@'localhost' IDENTIFIED BY 'password';"
+#mysql -u root -e "FLUSH PRIVILEGES; ALTER USER 'root'@'localhost' IDENTIFIED BY 'password';" // ??????
+mysql -u root -e "FLUSH PRIVILEGES; SET PASSWORD FOR 'root'@'localhost' = PASSWORD('password');"
 sudo kill `cat /var/run/mysqld/mysqld.pid`
-# sudo kill `/var/run/mariadb/mariadb.pid` // Deveria ser esse?
+# sudo kill `/var/run/mariadb/mariadb.pid` // ???????
 sudo systemctl start mariadb
+
+
 
 
 # NGINX #######################################################################################################################
@@ -106,28 +115,81 @@ echo -e "${B}Install NGINX Secure ${N}"
 sudo ufw allow "Nginx HTTP"
 #sudo ufw status
 
+
+
+
 # Configure NGINX
-echo -e "${B}Configure NGINX ${N}"
+#echo -e "${B}Configure NGINX ${N}"
+sudo mv "${NGINX_DEF}" "${NGINX_DEF}.old"
 sudo chmod 777 -R $NGINX_DEF
-echo "server {" > $NGINX_DEF
-echo "    listen 80 default_server;" >> $NGINX_DEF
-echo "    listen [::]:80 default_server;" >> $NGINX_DEF
-echo "    root /var/www/html;" >> $NGINX_DEF
-echo "    index index.php index.html index.nginx-debian.html;" >> $NGINX_DEF
-echo "    server_name _;" >> $NGINX_DEF
-echo "    location / {" >> $NGINX_DEF
-echo "        try_files \$uri \$uri/ =404;" >> $NGINX_DEF
-echo "    }" >> $NGINX_DEF
-echo "    location ~ \.php$ {" >> $NGINX_DEF
-echo "        include snippets/fastcgi-php.conf;" >> $NGINX_DEF
-echo "        fastcgi_pass unix:/run/php/php${PHP_VERSION}-fpm.sock;" >> $NGINX_DEF
-echo "    }" >> $NGINX_DEF
-echo "}" >> $NGINX_DEF
+echo 'user www-data;' > $NGINX_DEF
+echo 'worker_processes auto;' >> $NGINX_DEF #1;' >> $NGINX_DEF
+echo 'error_log /var/log/nginx/error.log warn;' >> $NGINX_DEF
+echo 'pid       /var/run/nginx.pid;' >> $NGINX_DEF
+echo 'events {' >> $NGINX_DEF
+echo '    worker_connections 1024;' >> $NGINX_DEF
+echo '}' >> $NGINX_DEF
+echo 'http {' >> $NGINX_DEF
+echo '    include /etc/nginx/mime.types;' >> $NGINX_DEF
+echo '    default_type application/octet-stream;' >> $NGINX_DEF
+echo "    log_format main '${LOG_FORMAT}';" >> $NGINX_DEF
+echo '    access_log /var/log/nginx/access.log main;' >> $NGINX_DEF
+echo '    sendfile on;' >> $NGINX_DEF
+echo '    keepalive_timeout 65;' >> $NGINX_DEF
+echo '    server {' >> $NGINX_DEF
+echo '        listen                  80 ;' >> $NGINX_DEF
+echo '        listen                  [::]:80 ;' >> $NGINX_DEF
+echo '        client_max_body_size 32M;' >> $NGINX_DEF
+echo '        server_name ~^(?<subdomain>\w+)\.(?<domain>.+)$;' >> $NGINX_DEF
+echo '        root /var/www/html/;' >> $NGINX_DEF
+echo '        autoindex off;' >> $NGINX_DEF
+echo '        index index.php;' >> $NGINX_DEF
+echo '        allow all;' >> $NGINX_DEF
+echo '        location ~ ^/(img|css|js|video)/ { ' >> $NGINX_DEF           
+echo '            try_files /$subdomain/$domain$uri /$subdomain/default$uri /$uri;' >> $NGINX_DEF
+echo '        }' >> $NGINX_DEF
+echo '        location / {' >> $NGINX_DEF
+echo '            rewrite ^/([a-zA-Z0-9\.\-_\~/]+)$ /index.php?_uri=$1 last;' >> $NGINX_DEF
+echo '            location = /index.php {' >> $NGINX_DEF
+echo '                  include snippets/fastcgi-php.conf;' >> $NGINX_DEF
+echo "                  fastcgi_pass unix:/run/php/php${PHP_VERSION}-fpm.sock;" >> $NGINX_DEF
+echo '            }' >> $NGINX_DEF
+echo '            allow all;' >> $NGINX_DEF 
+echo '        }' >> $NGINX_DEF
+echo '    }' >> $NGINX_DEF
+echo '    server {' >> $NGINX_DEF
+echo '        listen                  443 ssl default_server;' >> $NGINX_DEF
+echo '        listen                  [::]:443 ssl default_server;' >> $NGINX_DEF
+
+echo '        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE' >> $NGINX_DEF
+echo '        ssl_prefer_server_ciphers on;' >> $NGINX_DEF
+
+echo '        client_max_body_size 32M;' >> $NGINX_DEF
+echo '        server_name ~^(?<subdomain>\w+)\.(?<domain>.+)$;' >> $NGINX_DEF
+echo '        root /var/www/html/;' >> $NGINX_DEF
+echo '        autoindex off;' >> $NGINX_DEF
+echo '        index index.php;' >> $NGINX_DEF
+echo '        allow all;' >> $NGINX_DEF
+echo '        location ~ ^/(img|css|js|video)/ {' >> $NGINX_DEF        
+echo '            try_files /$subdomain/$domain$uri /$subdomain/default$uri /$uri;' >> $NGINX_DEF
+echo '        }' >> $NGINX_DEF
+echo '        location / {' >> $NGINX_DEF
+echo '            rewrite ^/([a-zA-Z0-9\.\-_\~/]+)$ /index.php?_uri=$1 last;' >> $NGINX_DEF
+echo '            location = /index.php {' >> $NGINX_DEF
+echo '                  include snippets/fastcgi-php.conf;' >> $NGINX_DEF
+echo "                  fastcgi_pass unix:/run/php/php${PHP_VERSION}-fpm.sock;" >> $NGINX_DEF
+echo '            }' >> $NGINX_DEF
+echo '            allow all; ' >> $NGINX_DEF
+echo '        }' >> $NGINX_DEF
+echo '    }' >> $NGINX_DEF
+echo '}' >> $NGINX_DEF
 sudo chmod 755 -R $NGINX_DEF
 
 # Restart NGINX
 echo -e "${B}Restart NGINX ${N}"
 sudo systemctl reload nginx
+
+sudo nano '/etc/nginx/nginx.conf'
 
 
 
@@ -164,6 +226,7 @@ echo -e "${B}Configure PHP ${PHP_VERSION} Extensions ${N}"
 # https://serverfault.com/questions/627903/is-the-php-option-cgi-fix-pathinfo-really-dangerous-with-nginx-php-fpm
 sudo sed -i "s/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/" "/etc/php/${PHP_VERSION}/fpm/php.ini"
 sudo sed -i "s/display_errors = Off/display_errors = On/" "/etc/php/${PHP_VERSION}/fpm/php.ini"
+
 
 
 
@@ -230,26 +293,37 @@ sudo monit reload
 
 
 
+
 # PHPMYADMIN ##################################################################################################################
 ###############################################################################################################################
 
-# Set non-interactive mode
-sudo debconf-set-selections <<< 'phpmyadmin phpmyadmin/dbconfig-install boolean true'
-sudo debconf-set-selections <<< 'phpmyadmin phpmyadmin/app-password-confirm password root'
-sudo debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/admin-pass password root'
-sudo debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/app-pass password root'
-sudo debconf-set-selections <<< 'phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2'
+# TODO
 
-# PhpMyAdmin
-echo -e "${B}\n# Install PhpMyAdmin ${N}"
-sudo apt-get -y install phpmyadmin
 
-# Create symbolic link
-sudo ln -s /usr/share/phpmyadmin /var/www/html/phpmyadmin
 
-#sudo apt -y install adminer
-#sudo a2enconf adminer.conf
-#sudo ln -s /usr/share/adminer /var/www/html/adminer
+# PHPMYADMIN ##################################################################################################################
+###############################################################################################################################
+
+echo -e "${B}Install Adminer ${N}"
+sudo wget -O /var/www/html/adminer.php https://github.com/vrana/adminer/releases/download/v4.8.1/adminer-4.8.1.php  
+
+
+
+
+# LETSENCRYPT #################################################################################################################
+###############################################################################################################################
+
+## https://certbot.eff.org/instructions
+
+#echo -e "${B}Install SSL ${N}"
+#sudo snap install core; sudo snap refresh core
+#sudo snap install --classic certbot
+#sudo certbot --nginx -n --agree-tos -m leonardogiori@gmail.com -d giori.com.br,www.giori.com.br,app.giori.com.br
+#sudo certbot renew --dry-run
+
+## TODO - Adicionar cron para renovar
+## https://techmonger.github.io/49/certbot-auto-renew/
+
 
 
 
@@ -258,6 +332,10 @@ sudo ln -s /usr/share/phpmyadmin /var/www/html/phpmyadmin
 
 # Basic app settings 
 echo -e "${B}Configure ${N}"
+
+echo -e "Open ports..."
+sudo ufw allow http
+sudo ufw allow https
 
 echo -e "Set perms for www..."
 sudo chown -R www-data:www-data /var/www/html
