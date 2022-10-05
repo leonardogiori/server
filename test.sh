@@ -8,7 +8,7 @@ MONIT_CONF='/etc/monit/monitrc'
 
 # Configure NGINX
 echo -e "${B}Configure NGINX ${N}"
-sudo mv "${NGINX_DEF}" "${NGINX_DEF}.old"
+
 sudo chmod 777 -R $NGINX_DEF
 echo 'user www-data;' > $NGINX_DEF
 echo 'worker_processes auto;' >> $NGINX_DEF #1;' >> $NGINX_DEF
