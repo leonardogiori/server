@@ -86,6 +86,3 @@ echo -e "${B}Restart NGINX ${N}"
 sudo systemctl reload nginx
 
 
-
-
-fi
