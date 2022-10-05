@@ -32,29 +32,45 @@ sudo clear
 # NGINX #######################################################################################################################
 ###############################################################################################################################
 
-# Install NGINX
-echo -e "${B}Install Nginx ${N}"
-sudo apt install nginx -y
-
-# Install NGINX Secure
-echo -e "${B}Install NGINX Secure ${N}"
-sudo ufw allow "Nginx HTTP"
-#sudo ufw status
-
-
 # Configure NGINX
 echo -e "${B}Configure NGINX ${N}"
 
-sudo mv "${NGINX_CONF}" "${NGINX_CONF}.old"
+
 sudo mv "${NGINX_DEF}" "${NGINX_DEF}.old"
 
 echo '    server {' >> $NGINX_DEF
+
+echo '        root /var/www/html/;' >> $NGINX_DEF
+echo '        index index.php;' >> $NGINX_DEF
+
+echo '        server_name ~^(?<subdomain>\w+)\.(?<domain>.+)$;' >> $NGINX_DEF
+
+echo '        client_max_body_size 32M;' >> $NGINX_DEF
+echo '        autoindex off;' >> $NGINX_DEF
+echo '        allow all;' >> $NGINX_DEF
+
+echo '        location ~ ^/(img|css|js|video)/ {' >> $NGINX_DEF        
+echo '            try_files /$subdomain/$domain$uri /$subdomain/default$uri /$uri;' >> $NGINX_DEF
+echo '        }' >> $NGINX_DEF
+
+echo '        location / {' >> $NGINX_DEF
+echo '            rewrite ^/([a-zA-Z0-9\.\-_\~/]+)$ /index.php?_uri=$1 last;' >> $NGINX_DEF
+echo '            location = /index.php {' >> $NGINX_DEF
+echo '                  include snippets/fastcgi-php.conf;' >> $NGINX_DEF
+echo "                  fastcgi_pass unix:/run/php/php${PHP_VERSION}-fpm.sock;" >> $NGINX_DEF
+echo '            }' >> $NGINX_DEF
+echo '            allow all; ' >> $NGINX_DEF
+echo '        }' >> $NGINX_DEF
+
 echo '        listen                  [::]:443 ssl ipv6only=on;' >> $NGINX_DEF
 echo '        listen                  443 ssl;' >> $NGINX_DEF
 echo "        ssl_certificate         /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;" >> $NGINX_DEF
 echo "        ssl_certificate_key     /etc/letsencrypt/live/${DOMAIN}/privkey.pem;" >> $NGINX_DEF
 echo '        include                 /etc/letsencrypt/options-ssl-nginx.conf;' >> $NGINX_DEF
 echo '        ssl_dhparam             /etc/letsencrypt/ssl-dhparams.pem;' >> $NGINX_DEF
+
+echo '    }' >> $NGINX_DEF
+
 echo '    server {' >> $NGINX_DEF
 echo '        return 301 https://$host$request_uri;' >> $NGINX_DEF
 echo '    }' >> $NGINX_DEF
