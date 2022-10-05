@@ -14,8 +14,10 @@ C=$'\e[1;30m'
 N=$'\e[0m'
 
 # Vars
+DOMAIN='giori.com.br'
 PHP_VERSION='8.1'
-NGINX_DEF='/etc/nginx/nginx.conf'
+NGINX_DEF='/etc/nginx/sites-available/default'
+NGINX_GONF='/etc/nginx/nginx.conf'
 LOG_FORMAT='$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" "$http_x_forwarded_for"'
 MONIT_CONF='/etc/monit/monitrc'
 
@@ -115,8 +117,65 @@ echo -e "${B}Install NGINX Secure ${N}"
 sudo ufw allow "Nginx HTTP"
 #sudo ufw status
 
+# Configure NGINX
+echo -e "${B}Configure NGINX ${N}"
 
+sudo mv "${NGINX_DEF}" "${NGINX_DEF}.old"
+echo 'server {' > $NGINX_DEF
+echo '  root /var/www/html/;' >> $NGINX_DEF
+echo '  index index.php;' >> $NGINX_DEF
+echo '  server_name ~^(?<subdomain>\w+)\.(?<domain>.+)$;' >> $NGINX_DEF
+echo '  client_max_body_size 32M;' >> $NGINX_DEF
+echo '  autoindex off;' >> $NGINX_DEF
+echo '  allow all;' >> $NGINX_DEF
+echo '  location ~ ^/(img|css|js|video)/ {' >> $NGINX_DEF        
+echo '      try_files /$subdomain/$domain$uri /$subdomain/default$uri /$uri;' >> $NGINX_DEF
+echo '  }' >> $NGINX_DEF
+echo '  location / {' >> $NGINX_DEF
+echo '      rewrite ^/([a-zA-Z0-9\.\-_\~/]+)$ /index.php?_uri=$1 last;' >> $NGINX_DEF
+echo '      location = /index.php {' >> $NGINX_DEF
+echo '      include snippets/fastcgi-php.conf;' >> $NGINX_DEF
+echo "          fastcgi_pass unix:/run/php/php${PHP_VERSION}-fpm.sock;" >> $NGINX_DEF
+echo '      }' >> $NGINX_DEF
+echo '      allow all; ' >> $NGINX_DEF
+echo '  }' >> $NGINX_DEF
+echo '  listen                  [::]:443 ssl ipv6only=on;' >> $NGINX_DEF
+echo '  listen                  443 ssl;' >> $NGINX_DEF
+echo "  ssl_certificate         /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;" >> $NGINX_DEF
+echo "  ssl_certificate_key     /etc/letsencrypt/live/${DOMAIN}/privkey.pem;" >> $NGINX_DEF
+echo '  include                 /etc/letsencrypt/options-ssl-nginx.conf;' >> $NGINX_DEF
+echo '  ssl_dhparam             /etc/letsencrypt/ssl-dhparams.pem;' >> $NGINX_DEF
+echo '}' >> $NGINX_DEF
+echo 'server {' >> $NGINX_DEF
+echo '  return 301 https://$host$request_uri;' >> $NGINX_DEF
+echo '}' >> $NGINX_DEF
 
+sudo mv "${NGINX_CONF}" "${NGINX_CONF}.old"
+echo 'user www-data;' > $NGINX_CONF
+echo 'worker_processes auto;' >> $NGINX_CONF
+echo 'pid /run/nginx.pid;' >> $NGINX_CONF
+echo 'include /etc/nginx/modules-enabled/*.conf;' >> $NGINX_CONF
+echo 'events {' >> $NGINX_CONF
+echo '  worker_connections 1024;' >> $NGINX_CONF
+echo '}' >> $NGINX_CONF
+echo 'http {' >> $NGINX_CONF
+echo '	sendfile on;' >> $NGINX_CONF
+echo '	tcp_nopush on;' >> $NGINX_CONF
+echo '  keepalive_timeout 65;' >> $NGINX_DEF
+echo '  types_hash_max_size 2048;' >> $NGINX_CONF
+echo '	include /etc/nginx/mime.types;' >> $NGINX_CONF
+echo "  log_format main '${LOG_FORMAT}';" >> $NGINX_CONF
+echo '	default_type application/octet-stream;' >> $NGINX_CONF
+echo '  ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;' >> $NGINX_CONF
+echo '	ssl_prefer_server_ciphers on;' >> $NGINX_CONF
+echo '	access_log /var/log/nginx/access.log;' >> $NGINX_CONF
+echo '	error_log /var/log/nginx/error.log;' >> $NGINX_CONF
+echo '	gzip on;' >> $NGINX_CONF
+echo '	include /etc/nginx/conf.d/*.conf;' >> $NGINX_CONF
+echo '	include /etc/nginx/sites-enabled/*;' >> $NGINX_CONF
+echo '}' >> $NGINX_CONF
+
+sudo chmod 755 -R $NGINX_DEF
 
 # Restart NGINX
 echo -e "${B}Restart NGINX ${N}"
@@ -140,7 +199,7 @@ sudo apt install php-common \
                  php-mbstring \
                  php-curl \
                  php-mbstring \
-                 php-gettext \
+                 #php-gettext \
                  php-gd \
                  php-json \
                  php-xml \
@@ -240,6 +299,21 @@ echo -e "${B}Install Adminer ${N}"
 sudo wget -O /var/www/html/adminer.php https://github.com/vrana/adminer/releases/download/v4.8.1/adminer-4.8.1.php  
 
 
+
+
+# LETSENCRYPT #################################################################################################################
+###############################################################################################################################
+
+## https://certbot.eff.org/instructions
+
+#echo -e "${B}Install SSL ${N}"
+#sudo snap install core; sudo snap refresh core
+#sudo snap install --classic certbot
+#sudo certbot --nginx -n --agree-tos -m leonardogiori@gmail.com -d giori.com.br,www.giori.com.br,app.giori.com.br
+#sudo certbot renew --dry-run
+
+## TODO - Adicionar cron para renovar
+## https://techmonger.github.io/49/certbot-auto-renew/
 
 
 
