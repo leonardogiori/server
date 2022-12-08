@@ -136,7 +136,7 @@ echo '      rewrite ^/([a-zA-Z0-9\.\-_\~/]+)$ /index.php?_uri=$1 last;' >> $NGIN
 echo '      location = /index.php {' >> $NGINX_DEF
 echo '      include snippets/fastcgi-php.conf;' >> $NGINX_DEF
 echo "          fastcgi_pass unix:/run/php/php${PHP_VERSION}-fpm.sock;" >> $NGINX_DEF
-echo '          fastcgi_read_timeout 300;';
+echo '          fastcgi_read_timeout 300;'; >> $NGINX_DEF
 echo '      }' >> $NGINX_DEF
 echo '      allow all; ' >> $NGINX_DEF
 echo '  }' >> $NGINX_DEF
