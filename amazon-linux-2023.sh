@@ -1,5 +1,5 @@
 
-# Amazon Linux 2023 - Server Install
+# Amazon Linux 2023 - Server Install 
 
 # Exec .sh
 # cd /tmp && curl -L https://raw.githubusercontent.com/leonardogiori/server/main/amazon-linux-2023.sh?raw=true > script.sh && chmod +x script.sh && sudo bash script.sh && rm script.sh && cd /
