@@ -2,12 +2,7 @@
 # Amazon Linux 2023 - Server Install
 
 # Exec .sh
-#cd /tmp
-#curl -L https://raw.githubusercontent.com/leonardogiori/server/main/amazon-linux-2023.sh?raw=true > script.sh
-#chmod +x script.sh
-#sudo script.sh
-#rm script.sh
-#cd /
+# cd /tmp && curl -L https://raw.githubusercontent.com/leonardogiori/server/main/amazon-linux-2023.sh?raw=true > script.sh && chmod +x script.sh && sudo bash script.sh && rm script.sh && cd /
 
 # UPDATE
 #sudo yum update
@@ -24,7 +19,20 @@
 
 #php-fpm -v
 
+# CERTS OPEN SSL
+openssl genrsa -out /etc/ssl/certs/localhost.key 2048
+openssl req -new -key /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.csr -subj "/C=BR/ST=MG/L=Belo Horizonte/O=Giori/CN=giori"
+openssl x509 -req -in /etc/ssl/certs/localhost.csr -signkey /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.crt -days 365
+chown www:www /etc/ssl/certs/localhost.key
+chmod 644 /etc/ssl/certs/localhost.key
+openssl x509 -in /etc/ssl/certs/localhost.crt -text
+
+
+
 #sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup
+
+
+
 
 nginx_conf='
 user nginx;
