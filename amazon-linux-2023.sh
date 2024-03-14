@@ -20,14 +20,15 @@
 #php-fpm -v
 
 # CERTS OPEN SSL
-sudo openssl genrsa -out /etc/ssl/certs/localhost.key 2048
-sudo openssl req -new -key /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.csr -subj "/C=BR/ST=MG/L=Belo Horizonte/O=Giori/CN=giori"
-sudo openssl x509 -req -in /etc/ssl/certs/localhost.csr -signkey /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.crt -days 365
-sudo chown nginx:nginx /etc/ssl/certs/localhost.key
-sudo chmod 644 /etc/ssl/certs/localhost.key
-sudo openssl x509 -in /etc/ssl/certs/localhost.crt -text
+#sudo openssl genrsa -out /etc/ssl/certs/localhost.key 2048
+#sudo openssl req -new -key /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.csr -subj "/C=BR/ST=MG/L=Belo Horizonte/O=Giori/CN=giori"
+#sudo openssl x509 -req -in /etc/ssl/certs/localhost.csr -signkey /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.crt -days 365
+#sudo chown nginx:nginx /etc/ssl/certs/localhost.key
+#sudo chmod 644 /etc/ssl/certs/localhost.key
+#sudo openssl x509 -in /etc/ssl/certs/localhost.crt -text
 
 #sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup
+#sudo cp /etc/nginx/nginx.conf.backup /etc/nginx/nginx.conf
 
 nginx_conf='
 user nginx;
