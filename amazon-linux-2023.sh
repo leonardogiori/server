@@ -1,5 +1,5 @@
 
-# Amazon Linux 2023 - Server Install 
+# Amazon Linux 2023 - Server Install
 
 # Exec .sh
 # cd /tmp && curl -L https://raw.githubusercontent.com/leonardogiori/server/main/amazon-linux-2023.sh?raw=true > script.sh && chmod +x script.sh && sudo bash script.sh && rm script.sh && cd /
@@ -39,6 +39,7 @@ events {
 }
 http {
     include /etc/nginx/mime.types;
+    types_hash_max_size 4096;
     default_type application/octet-stream;
     #access_log /var/log/nginx/access.log main;
     sendfile on;
@@ -67,8 +68,8 @@ http {
     server {
         listen                  443 ssl default_server;
         listen                  [::]:443 ssl default_server;
-        ssl_certificate         /etc/nginx/ssl/localhost.crt;
-        ssl_certificate_key     /etc/nginx/ssl/localhost.key;
+        ssl_certificate         /etc/ssl/certs/localhost.crt;
+        ssl_certificate_key     /etc/ssl/certs/localhost.key;
         ssl_protocols           SSLv3 TLSv1 TLSv1.1 TLSv1.2;
         ssl_ciphers             HIGH:!aNULL:!MD5;
         client_max_body_size 32M;
