@@ -23,7 +23,7 @@
 sudo openssl genrsa -out /etc/ssl/certs/localhost.key 2048
 sudo openssl req -new -key /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.csr -subj "/C=BR/ST=MG/L=Belo Horizonte/O=Giori/CN=giori"
 sudo openssl x509 -req -in /etc/ssl/certs/localhost.csr -signkey /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.crt -days 365
-sudo chown www:www /etc/ssl/certs/localhost.key
+sudo chown nginx:nginx /etc/ssl/certs/localhost.key
 sudo chmod 644 /etc/ssl/certs/localhost.key
 sudo openssl x509 -in /etc/ssl/certs/localhost.crt -text
 
@@ -40,6 +40,7 @@ events {
 http {
     include /etc/nginx/mime.types;
     default_type application/octet-stream;
+    log_format main \'$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" "$http_x_forwarded_for"\';
     access_log /var/log/nginx/access.log main;
     sendfile on;
     keepalive_timeout 65;
