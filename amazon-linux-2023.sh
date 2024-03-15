@@ -1,35 +1,6 @@
 
 # Amazon Linux 2023 - Server Install
 
-# Exec .sh
-# cd /tmp && curl -L https://raw.githubusercontent.com/leonardogiori/server/main/amazon-linux-2023.sh?raw=true > script.sh && chmod +x script.sh && sudo bash script.sh && rm script.sh && cd /
-
-# UPDATE
-#sudo yum update
-
-# NGINX
-#sudo yum install nginx -y
-#sudo systemctl enable nginx
-#sudo systemctl start nginx
-
-# PHP
-#sudo yum install php8.2-fpm -y
-#sudo systemctl enable php-fpm
-#sudo systemctl start php-fpm
-
-#php-fpm -v
-
-# CERTS OPEN SSL
-#sudo openssl genrsa -out /etc/ssl/certs/localhost.key 2048
-#sudo openssl req -new -key /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.csr -subj "/C=BR/ST=MG/L=Belo Horizonte/O=Giori/CN=giori"
-#sudo openssl x509 -req -in /etc/ssl/certs/localhost.csr -signkey /etc/ssl/certs/localhost.key -out /etc/ssl/certs/localhost.crt -days 365
-#sudo chown nginx:nginx /etc/ssl/certs/localhost.key
-#sudo chmod 644 /etc/ssl/certs/localhost.key
-#sudo openssl x509 -in /etc/ssl/certs/localhost.crt -text
-
-#sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup
-#sudo cp /etc/nginx/nginx.conf.backup /etc/nginx/nginx.conf
-
 nginx_conf='
 user nginx;
 worker_processes 1;
@@ -51,22 +22,6 @@ http {
         return 301 https://$host$request_uri;
     }
     server {
-        listen                  443 ssl;
-        listen                  [::]:443 ssl;
-        server_name ~^(site)\.(?<domain>.+)$;
-        root /var/www/site/;
-        location ~ "\.(gif|jpg|png|css|js|svg|jpeg|webp|avif)$" {
-            try_files /$uri $uri =404;
-        }
-        location / {
-            fastcgi_pass   127.0.0.1:9000;
-            fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
-            include        fastcgi_params;
-            fastcgi_index  index.php;
-            try_files /$uri $uri /$uri/index.php $uri/index.php =404;
-        }
-    }
-    server {
         listen                  443 ssl default_server;
         listen                  [::]:443 ssl default_server;
         ssl_certificate         /etc/ssl/certs/localhost.crt;
@@ -85,14 +40,14 @@ http {
         location / {
             rewrite ^/([a-zA-Z0-9\.\-_\~@/]+)$ /index.php?_uri=$1 last;
             location = /index.php {
-                fastcgi_pass   127.0.0.1:9000;
-                fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
-                include        fastcgi_params;
+                fastcgi_pass unix:/var/run/php-fpm/www.sock;
+                #fastcgi_index index.php;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+                includefastcgi_params;
             }  
             allow all;   
         }
     }
 }
 '
-
 echo "$nginx_conf" > /etc/nginx/nginx.conf
