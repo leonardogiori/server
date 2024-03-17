@@ -30,6 +30,29 @@ http {
         }
     }
     server {
+        listen 443 ssl;
+        listen [::]:443 ssl;
+        client_max_body_size 32M;
+        server_name ~^(?<subdomain>\w+)\.(alferes.com.br)$;
+        root /var/www/nexus/;
+        autoindex off;
+        index index.php;
+        allow all;
+        ssl_certificate         /etc/letsencrypt/live/giori.com.br/fullchain.pem;
+        ssl_certificate_key     /etc/letsencrypt/live/giori.com.br/privkey.pem;
+        ssl_protocols SSLv3 TLSv1 TLSv1.1 TLSv1.2;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        location / {
+            rewrite ^/([a-zA-Z0-9\.\-_\~@/]+)$ /index.php?_uri=$1 last;
+            location = /index.php {
+                fastcgi_pass unix:/var/run/php-fpm/www.sock;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+                include fastcgi_params;
+            }  
+            allow all;
+        }
+    }
+    server {
         listen                  443 ssl default_server;
         listen                  [::]:443 ssl default_server;
         client_max_body_size 32M;
@@ -62,29 +85,6 @@ http {
             allow all;
         }
     }
-    server {
-        listen 443 ssl default_server;
-        listen [::]:443 ssl default_server;
-        client_max_body_size 32M;
-        server_name ~^(?<subdomain>\w+)\.(?<domain>.+)$;
-        root /var/www/nexus/;
-        autoindex off;
-        index index.php;
-        allow all;
-        ssl_certificate /etc/letsencrypt/live/giori.com.br/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/giori.com.br/privkey.pem;
-        ssl_protocols SSLv3 TLSv1 TLSv1.1 TLSv1.2;
-        ssl_ciphers HIGH:!aNULL:!MD5;
-        location / {
-            rewrite ^/([a-zA-Z0-9\.\-_\~@/]+)$ /index.php?_uri=$1 last;
-            location = /index.php {
-                fastcgi_pass unix:/var/run/php-fpm/www.sock;
-                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-                include fastcgi_params;
-            }  
-            allow all;
-        }
-    }
-}
+}       
 '
 echo "$nginx_conf" > /etc/nginx/nginx.conf
