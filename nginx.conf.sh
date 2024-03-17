@@ -38,15 +38,43 @@ http {
         autoindex off;
         index index.php;
         allow all;
-        #ssl_certificate         /etc/letsencrypt/live/giori.com.br/fullchain.pem;
-        #ssl_certificate_key     /etc/letsencrypt/live/giori.com.br/privkey.pem;
-        ssl_certificate /etc/ssl/certs/localhost.crt;
-        ssl_certificate_key /etc/ssl/certs/localhost.key;
+        ssl_certificate         /etc/letsencrypt/live/giori.com.br/fullchain.pem;
+        ssl_certificate_key     /etc/letsencrypt/live/giori.com.br/privkey.pem;
         ssl_protocols           SSLv3 TLSv1 TLSv1.1 TLSv1.2;
         ssl_ciphers             HIGH:!aNULL:!MD5;
         location ~ ^/asset/(?:([^\/]+)/)?(.*)$ {
             try_files /data/storage/$1/$2 /data/static/$1/$2 /html/$domain/$subdomain/asset/$1/$2 /core/$1/asset/$2 /data/static/$domain/$subdomain/asset/$1/$2 /static/$1/$2;
         }
+        location /adminer.php {
+            fastcgi_pass unix:/var/run/php-fpm/www.sock;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            include fastcgi_params;
+            allow all;
+            try_files $uri /$uri $uri/ =404;
+        }
+        location / {
+            rewrite ^/([a-zA-Z0-9\.\-_\~@/]+)$ /index.php?_uri=$1 last;
+            location = /index.php {
+                fastcgi_pass unix:/var/run/php-fpm/www.sock;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+                include fastcgi_params;
+            }  
+            allow all;
+        }
+    }
+    server {
+        listen 443 ssl default_server;
+        listen [::]:443 ssl default_server;
+        client_max_body_size 32M;
+        server_name ~^(?<subdomain>\w+)\.(?<domain>.+)$;
+        root /var/www/nexus/;
+        autoindex off;
+        index index.php;
+        allow all;
+        ssl_certificate /etc/letsencrypt/live/giori.com.br/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/giori.com.br/privkey.pem;
+        ssl_protocols SSLv3 TLSv1 TLSv1.1 TLSv1.2;
+        ssl_ciphers HIGH:!aNULL:!MD5;
         location / {
             rewrite ^/([a-zA-Z0-9\.\-_\~@/]+)$ /index.php?_uri=$1 last;
             location = /index.php {
